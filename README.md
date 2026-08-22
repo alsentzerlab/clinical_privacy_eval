@@ -81,8 +81,8 @@ aihub_client.py               # Need to edit with LLM judge client
 
 You need to edit config.py with your filepaths, sensitive diagnoses, and regex templates. 
 
-| Section in `config.py` | What it controls 
-|---|---|---|
+| Section in `config.py` | What it controls |
+|---|---|
 | 1. `SENSITIVE_DIAGNOSES` | the diagnosis panel audited for semantic leakage |
 | 2. Note-boundary regexes (`ENCOUNTER_BOUNDARY_PATTERNS`, `NOTE_START_BOUNDARY_PATTERN`, `NOTE_HPI_BOUNDARY_PATTERNS`) | mark where each prior tier ends in a full note |
 | 3. `KNOWN_HEADERS` + `SECTION_HEADER_TAXONOMY` + `BLANKET_TEMPLATED_SECTIONS` | the note-section headers used by your corpus's template | 
