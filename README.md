@@ -97,20 +97,43 @@ You need to edit config.py with your filepaths, sensitive diagnoses, and regex t
 ```
 
 **Pre-annotation cohort** (`config.PRE_ANNOTATION_PATH`, output of
-`0_cohort_creation/regex_extract.sql` or your equivalent extraction
- — one row per patient, with the demographic/note
-fields prompt construction consumes: `extracted_name`, `extracted_dob`,
-`patient_gender`, `marital_status`, `occupation`, `children`,
-`medications`, `note_start` (everything up to the HPI header for last note), `note_hpi` (note_start + HPI for last note), `last_note`. 
+`0_cohort_creation/regex_extract.sql` or your equivalent extraction) — one row per patient:
+```json
+{
+  "PatientUid": "...",
+  "extracted_name": "...",
+  "extracted_dob": "1990-01-01",
+  "patient_gender": "F",
+  "marital_status": "married",
+  "occupation": "...",
+  "children": "2",
+  "medications": "...",
+  "note_start": "...everything up to the HPI header of the last note...",
+  "note_hpi": "...note_start + the HPI body of the last note...",
+  "last_note": "full note text..."
+}
+```
 
 **Annotated cohort** (`config.ANNOTATED_COHORT_PATH`, output of
 `0_cohort_creation/annotate_for_sensitive_dx.py`) — the pre-annotation cohort
-plus, per diagnosis, the fields the LLM judge fills in: `{dx}_present`
-(cohort-labeling ground truth), `{dx}_in_note_start`/`{dx}_in_hpi`
-(chief-complaint/HPI leakage flags used to exclude patients from the
-note-fragment eval tiers), `{dx}_medications_filtered`, `{dx}_medications_to_remove`, and the
-evidence spans behind each judgment (`{dx}_diagnosis_spans`,
-`{dx}_icd10_spans`, `{dx}_symptom_spans`, `{dx}_medication_spans`).
+record plus, per diagnosis, the fields the LLM judge fills in (shown here for one
+diagnosis, `abortion`; every diagnosis in `config.SENSITIVE_DIAGNOSES` gets its own
+`{dx}_*` set):
+```json
+{
+  "PatientUid": "...",
+  "...": "(all pre-annotation cohort fields)",
+  "abortion_present": true,
+  "abortion_in_note_start": false,
+  "abortion_in_hpi": false,
+  "abortion_medications_filtered": "...",
+  "abortion_medications_to_remove": ["..."],
+  "abortion_diagnosis_spans": ["..."],
+  "abortion_icd10_spans": ["..."],
+  "abortion_symptom_spans": ["..."],
+  "abortion_medication_spans": ["..."]
+}
+```
 ## Running the pipeline
 
 ```bash
