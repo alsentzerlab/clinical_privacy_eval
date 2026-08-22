@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# OS
+.DS_Store
+
+# Editor / tooling
+.claude/
+.vscode/
+.idea/
+
+# Secrets
+.env
+
+# PHI-sensitive runtime outputs (see config.py) — never commit real data
+data/
+models/
+cache/
+privacy_eval_results/
+analysis/
+figures/

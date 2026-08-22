@@ -1,0 +1,25 @@
+[project]
+name = "clinical-privacy-eval"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.3",
+    "transformers>=4.46",
+    "datasets>=2.20",
+    "accelerate>=0.33",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "psmpy>=0.3.13",
+    "scikit-learn>=1.4",
+    "pyahocorasick>=2.1",
+    "aiohttp>=3.9",
+    "tiktoken>=0.7",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "orjson>=3.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools]
+py-modules = ["config", "aihub_client"]
