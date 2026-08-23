@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import sys
 import time
@@ -28,6 +29,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.lines import Line2D
+from scipy.stats import beta
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import config  # noqa: E402
@@ -87,8 +89,9 @@ _CB = sns.color_palette("colorblind")
 _DELTA_POS_COLOR = _CB[3]   # vermillion
 _DELTA_NEG_COLOR = _CB[0]   # blue
 
-SUB_COLS = ["mention_rate", "n_positive", "n_negative", "n_ambiguous",
-            "n_null", "auroc", "ppv", "n_mentioned", "TP", "FN", "FP", "TN"]
+SUB_COLS = ["mention_rate", "local_prevalence", "n_positive", "n_negative",
+            "n_ambiguous", "n_null", "auroc", "auroc_ci_lo", "auroc_ci_hi",
+            "ppv", "ppv_ci_lo", "ppv_ci_hi", "n_mentioned", "TP", "FN", "FP", "TN"]
 MODES = ["original", "adjudication"]
 METRIC_PRETTY = {"auroc": "AUROC", "ppv": "PPV"}
 
@@ -109,6 +112,26 @@ def auroc(TP: int, FN: int, FP: int, TN: int) -> float | None:
     if npos == 0 or nneg == 0:
         return None
     return (TP * TN + 0.5 * (TP * FP + FN * TN)) / (npos * nneg)
+
+
+def clopper_pearson_ci(k: int, n: int, alpha: float = 0.05) -> tuple[float, float] | None:
+    """Exact Clopper-Pearson (beta-quantile) interval for a binomial
+    proportion k/n, default 95% (alpha=0.05)."""
+    if n == 0:
+        return None
+    lo = beta.ppf(alpha / 2, k, n - k + 1) if k > 0 else 0.0
+    hi = beta.ppf(1 - alpha / 2, k + 1, n - k) if k < n else 1.0
+    return (float(lo), float(hi))
+
+
+def hanley_mcneil_ci(a: float, npos: int, nneg: int, z: float = 1.959963984540054) -> tuple[float, float]:
+    """Hanley & McNeil (1982) normal-approximation 95% CI for an AUC,
+    given the point estimate and the positive/negative sample sizes."""
+    q1 = a / (2 - a)
+    q2 = 2 * a * a / (1 + a)
+    var = (a * (1 - a) + (npos - 1) * (q1 - a * a) + (nneg - 1) * (q2 - a * a)) / (npos * nneg)
+    se = math.sqrt(max(var, 0.0))
+    return (max(0.0, a - z * se), min(1.0, a + z * se))
 
 
 def load_gold(path: str | None) -> dict:
@@ -234,18 +257,31 @@ def process_chunk(task):
 def stats_from(t: dict) -> dict:
     TP, FN, FP, TN = t.get("TP", 0), t.get("FN", 0), t.get("FP", 0), t.get("TN", 0)
     a = auroc(TP, FN, FP, TN)
+    npos, nneg = TP + FN, FP + TN
+    a_ci = hanley_mcneil_ci(a, npos, nneg) if a is not None else None
     pred_pos = TP + FP
     ppv = TP / pred_pos if pred_pos else None
+    ppv_ci = clopper_pearson_ci(TP, pred_pos) if pred_pos else None
     known = t.get("n_mention_known", 0)
     mr = t.get("n_mentioned", 0) / known if known else None
+    # "evaluated subcohort" = A+B+C+D (TP+FN+FP+TN): records with both a
+    # ground-truth label and a judge polarity, i.e. where the diagnosis
+    # was mentioned and adjudicable. Local prevalence = (TP+FN) / that.
+    n_evaluated = TP + FN + FP + TN
+    local_prev = (TP + FN) / n_evaluated if n_evaluated else None
     return {
         "mention_rate": f"{mr:.3f}" if mr is not None else "n/a",
+        "local_prevalence": f"{local_prev:.3f}" if local_prev is not None else "n/a",
         "n_positive": str(t.get("n_positive", 0)),
         "n_negative": str(t.get("n_negative", 0)),
         "n_ambiguous": str(t.get("n_ambiguous", 0)),
         "n_null": str(t.get("n_null", 0)),
         "auroc": f"{a:.3f}" if a is not None else "n/a",
+        "auroc_ci_lo": f"{a_ci[0]:.3f}" if a_ci is not None else "n/a",
+        "auroc_ci_hi": f"{a_ci[1]:.3f}" if a_ci is not None else "n/a",
         "ppv": f"{ppv:.3f}" if ppv is not None else "n/a",
+        "ppv_ci_lo": f"{ppv_ci[0]:.3f}" if ppv_ci is not None else "n/a",
+        "ppv_ci_hi": f"{ppv_ci[1]:.3f}" if ppv_ci is not None else "n/a",
         "n_mentioned": str(t.get("n_mentioned", 0)),
         "TP": str(TP), "FN": str(FN), "FP": str(FP), "TN": str(TN),
     }
