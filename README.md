@@ -1,4 +1,4 @@
-# Clinically Grounded Privacy Evaluation Framework of LMs 
+# Clinically Grounded Privacy Evaluation Framework of Medical LMs 
 
 A clinically grounded framework for auditing privacy leakage in language
 models trained on clinical notes. It evaluates leakage along a **graded axis
